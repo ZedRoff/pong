@@ -20,7 +20,8 @@ const scene = new THREE.Scene();
 
 // Camera 
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-camera.position.set(0,0,5)
+let cameraZ = 6;
+camera.position.set(0,0,cameraZ)
 camera.lookAt(0,0,0)
 
 // Renderer 
@@ -67,29 +68,31 @@ scene.add(rectangleRight);
 let rightCollided = false;
 function animate() {
    
-    checkSphereBoxesCollision();
+    moveBall();
     updateObjectPosition()
     renderer.render(scene,camera);
     css2DRenderer.render(scene,camera);
 }
 let ballSpeed = 0.02;
 let ballAdd = 0.01
+
 function checkSphereBoxesCollision() {
-    
-
-
     rectangleRight.updateMatrixWorld(true);
     rectangleLeft.updateMatrixWorld(true);
     const rectangleRightBB = new THREE.Box3().setFromObject(rectangleRight);
     const rectangleLeftBB = new THREE.Box3().setFromObject(rectangleLeft);
     const sphereBB = new THREE.Box3().setFromObject(sphere);
-    if(sphereBB.intersectsBox(rectangleRightBB) && !rightCollided) {
+    return {leftBox: sphereBB.intersectsBox(rectangleLeftBB), rightBox: sphereBB.intersectsBox(rectangleRightBB)};
+}
+function moveBall() {
+    const {leftBox, rightBox} = checkSphereBoxesCollision();
+    
+    if(rightBox && !rightCollided) {
         rightCollided = true;
         ballSpeed += ballAdd;
     } 
     
-    
-    if(sphereBB.intersectsBox(rectangleLeftBB)) {
+    if(leftBox) {
        rightCollided = false;
        ballSpeed += ballAdd;
     } 
@@ -152,10 +155,23 @@ window.addEventListener('keyup', (e) => {
 });
 
 function updateObjectPosition() {
-    if(keyState['a']) rectangleLeft.position.y += 0.1;
-    if(keyState['q']) rectangleLeft.position.y -= 0.1;
-    if(keyState['z']) rectangleRight.position.y += 0.1;
-    if(keyState['s']) rectangleRight.position.y -= 0.1;
+    const rectangleLeftHeight = rectangleLeft.geometry.parameters.height;
+    const rectangleRightHeight = rectangleRight.geometry.parameters.height;
+  
+
+    if (keyState['a'] && rectangleLeft.position.y + rectangleLeftHeight < cameraZ) {
+        rectangleLeft.position.y += 0.1;  
+    } 
+    if (keyState['q'] && rectangleLeft.position.y - rectangleLeftHeight > -cameraZ) {
+        rectangleLeft.position.y -= 0.1;  
+    }
+
+    if (keyState['z'] && rectangleRight.position.y + rectangleRightHeight < cameraZ) {
+        rectangleRight.position.y += 0.1;  
+    }
+    if (keyState['s'] && rectangleRight.position.y - rectangleRightHeight > -cameraZ) {
+        rectangleRight.position.y -= 0.1;  
+    }
 }
 
 // Resize event
