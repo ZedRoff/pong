@@ -1,0 +1,36 @@
+# Dépendances Node.js
+node_modules/
+npm-debug.log*
+yarn-error.log
+pnpm-debug.log
+
+# Dossiers de build et production
+dist/
+build/
+out/
+
+# Fichiers de logs
+logs/
+*.log
+*.log.*
+
+# Fichiers système et caches
+.DS_Store
+Thumbs.db
+.cache/
+.vscode/
+.idea/
+*.swp
+
+# Environnements et configurations locales
+.env
+.env.local
+.env.*.local
+
+# Dossiers spécifiques à Three.js (optionnel)
+*.r3f.cache.json
+
+# Dépendances installées via npm ou yarn (ajoutées juste par sécurité)
+package-lock.json
+yarn.lock
+pnpm-lock.yaml

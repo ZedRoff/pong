@@ -1,0 +1,25 @@
+{
+  "dependencies": {
+    "three": "^0.174.0",
+    "vite": "^6.2.0"
+  },
+  "name": "pong",
+  "version": "1.0.0",
+  "main": "main.js",
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ZedRoff/pong.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/ZedRoff/pong/issues"
+  },
+  "homepage": "https://github.com/ZedRoff/pong#readme",
+  "description": ""
+}
