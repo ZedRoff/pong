@@ -42,11 +42,12 @@ const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
 scene.add(sphere);
 
 // Rectangle Left
-
+let {left, right} = getCameraBoundaries();
+let offset = 1;
 const rectangleLeftGeometry = new THREE.PlaneGeometry(0.25,2);
 const rectangleLeftMaterial = new THREE.MeshBasicMaterial({color: 0x00ff00, side: THREE.DoubleSide});
 const rectangleLeft = new THREE.Mesh(rectangleLeftGeometry, rectangleLeftMaterial);
-rectangleLeft.position.x = -5;
+rectangleLeft.position.x = left + offset;
 rectangleLeft.position.y = 0;
 
 scene.add(rectangleLeft);
@@ -56,7 +57,7 @@ scene.add(rectangleLeft);
 const rectangleRightGeometry = new THREE.PlaneGeometry(0.25,2);
 const rectangleRightMaterial = new THREE.MeshBasicMaterial({color: 0x00ff00, side: THREE.DoubleSide});
 const rectangleRight = new THREE.Mesh(rectangleRightGeometry, rectangleRightMaterial);
-rectangleRight.position.x = 5;
+rectangleRight.position.x = right - offset;
 rectangleRight.position.y = 0;
 
 scene.add(rectangleRight);
@@ -73,8 +74,10 @@ function animate() {
     renderer.render(scene,camera);
     css2DRenderer.render(scene,camera);
 }
-let ballSpeed = 0.02;
+let baseSpeed = 0.02;
+let ballSpeed = baseSpeed;
 let ballAdd = 0.01
+let ballMaxSpeed = 0.1;
 
 function checkSphereBoxesCollision() {
     rectangleRight.updateMatrixWorld(true);
@@ -84,50 +87,86 @@ function checkSphereBoxesCollision() {
     const sphereBB = new THREE.Box3().setFromObject(sphere);
     return {leftBox: sphereBB.intersectsBox(rectangleLeftBB), rightBox: sphereBB.intersectsBox(rectangleRightBB)};
 }
+function getCameraBoundaries() {
+    const aspect = window.innerWidth / window.innerHeight;
+    const frustumHeight = 2 * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)) * camera.position.z;
+    const frustumWidth = frustumHeight * aspect;
+    return {
+        left: -frustumWidth / 2,
+        right: frustumWidth / 2,
+        top: frustumHeight / 2,
+        bottom: -frustumHeight / 2
+    };
+}
+function checkSphereScreenCollision() {
+    let {right, left, top, bottom} = getCameraBoundaries();
+    return {leftCollision: sphere.position.x - ballRadius <= left, rightCollision: sphere.position.x + ballRadius >= right, topCollision: sphere.position.y + ballRadius >= top, bottomCollision: sphere.position.y - ballRadius <= bottom};
+}
+let diff = 0;
+let angle = 0;
+let dir = 1;
+
+let playerOneScore = 0;
+let playerTwoScore = 0;
+
+
+const scoreSpan = document.createElement("span");
+scoreSpan.style.color = "red";
+scoreSpan.textContent = "0 | 0";
+const scoreLabel = new CSS2DObject(scoreSpan);
+scoreLabel.position.set(0, 13, 0);
+scene.add(scoreLabel);
+
 function moveBall() {
     const {leftBox, rightBox} = checkSphereBoxesCollision();
+    const {leftCollision, rightCollision, topCollision, bottomCollision} = checkSphereScreenCollision();
     
-    if(rightBox && !rightCollided) {
-        rightCollided = true;
-        ballSpeed += ballAdd;
-    } 
-    
-    if(leftBox) {
-       rightCollided = false;
-       ballSpeed += ballAdd;
-    } 
-   
-    if(rightCollided)  {
-        sphere.position.x -= ballSpeed;
-    } else {
-        sphere.position.x += ballSpeed;
+    if(leftCollision || rightCollision) {
+        rightCollision ? playerOneScore++ : playerTwoScore++;
+        scoreSpan.textContent = `${playerOneScore} | ${playerTwoScore}`
+        sphere.position.set(0,0,0);
+        ballSpeed = baseSpeed;
+        diff = 0;
     }
+    if(topCollision || bottomCollision) {
+        angle=-angle;
+    }
+   
+    if(rightBox || leftBox) {
+        let rectangle = rightBox ? rectangleRight : rectangleLeft;
+        dir = rightBox ? -1 : 1;
+        diff = (sphere.position.y - rectangle.position.y) / rectangle.geometry.parameters.height;
+        let mul = diff == 0 ? 0 : 1;
+        angle = (mul) * Math.PI / 2 + Math.abs(diff) * -Math.PI;
+    } 
+  
+    
+    sphere.position.x += (dir) * Math.cos(angle) * ballSpeed;
+    sphere.position.y +=  Math.sin(angle) * ballSpeed;
+   
+  
 }
 
 renderer.setAnimationLoop(animate)
 
 // Players label
+let i = 1;
+function generatePlayer(rectangle) {
+  
+    const playerSpan = document.createElement("span");
+    playerSpan.style.color = "yellow";
+    playerSpan.textContent = "Player "+i;
+    const playerLabel = new CSS2DObject(playerSpan);
+    rectangle.geometry.computeBoundingBox()
+    const rectangleHeight = rectangle.geometry.parameters.height * 7.5;
+    playerLabel.position.set(0, rectangleHeight / 2, 0);
+    playerLabel.rotation.set(0, Math.PI, 0)
+    rectangle.add(playerLabel);
+    i++;
+}
+generatePlayer(rectangleLeft);
+generatePlayer(rectangleRight);
 
-const playerOneSpan = document.createElement("span");
-
-playerOneSpan.style.color = "yellow";
-playerOneSpan.textContent = "Player 1";
-const playerOneLabel = new CSS2DObject(playerOneSpan);
-rectangleLeft.geometry.computeBoundingBox()
-const rectangleLeftHeight = rectangleLeft.geometry.parameters.height * 7.5;
-playerOneLabel.position.set(0, rectangleLeftHeight / 2, 0);
-playerOneLabel.rotation.set(0, Math.PI, 0)
-rectangleLeft.add(playerOneLabel);
-
-const playerTwoSpan = document.createElement("span");
-
-playerTwoSpan.style.color = "yellow";
-playerTwoSpan.textContent = "Player 2";
-const playerTwoLabel = new CSS2DObject(playerTwoSpan);
-const rectangleRightHeight = rectangleRight.geometry.parameters.height * 7.5;
-playerTwoLabel.position.set(0, rectangleRightHeight / 2, 0);
-
-rectangleRight.add(playerTwoLabel);
 
 // Key events
 
@@ -157,19 +196,19 @@ window.addEventListener('keyup', (e) => {
 function updateObjectPosition() {
     const rectangleLeftHeight = rectangleLeft.geometry.parameters.height;
     const rectangleRightHeight = rectangleRight.geometry.parameters.height;
-  
+    let {top, bottom} = getCameraBoundaries();
 
-    if (keyState['a'] && rectangleLeft.position.y + rectangleLeftHeight < cameraZ) {
+    if (keyState['a'] && rectangleLeft.position.y + rectangleLeftHeight / 2 < top) {
         rectangleLeft.position.y += 0.1;  
     } 
-    if (keyState['q'] && rectangleLeft.position.y - rectangleLeftHeight > -cameraZ) {
+    if (keyState['q'] && rectangleLeft.position.y - rectangleLeftHeight / 2 > bottom) {
         rectangleLeft.position.y -= 0.1;  
     }
 
-    if (keyState['z'] && rectangleRight.position.y + rectangleRightHeight < cameraZ) {
+    if (keyState['z'] && rectangleRight.position.y + rectangleRightHeight / 2 < top) {
         rectangleRight.position.y += 0.1;  
     }
-    if (keyState['s'] && rectangleRight.position.y - rectangleRightHeight > -cameraZ) {
+    if (keyState['s'] && rectangleRight.position.y - rectangleRightHeight / 2 > bottom) {
         rectangleRight.position.y -= 0.1;  
     }
 }
